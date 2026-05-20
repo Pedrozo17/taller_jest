@@ -1,12 +1,16 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
+// IMPORTANTE: Ajusta la ruta dependiendo de en qué carpeta guardaste WalletScreen.js
+// Como en tu código anterior importaste '../utils/walletEngine', asumo que WalletScreen 
+// está en una carpeta como 'src/screens/' o 'src/components/'.
+import WalletScreen from './src/screens/WalletScreen'; 
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <WalletScreen />
+    </SafeAreaView>
   );
 }
 
@@ -14,7 +18,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
