@@ -12,12 +12,12 @@ import {
 } from 'react-native';
 
 import {
-  generateTransactionHistory,
+  generateTransactionHistoryWithPoints,
   calculateNetBalance,
 } from '../utils/walletEngine';
 
 const allTransactions =
-  generateTransactionHistory(200);
+  generateTransactionHistoryWithPoints(200);
 
 export default function WalletScreen() {
 
@@ -56,6 +56,14 @@ export default function WalletScreen() {
       filteredTransactions
     );
 
+  // Puntos ADSO acumulados
+  const totalAdsoPoints =
+    filteredTransactions.reduce(
+      (total, item) =>
+        total + item.adsoPoints,
+      0
+    );
+
   return (
 
     <View style={styles.container}>
@@ -73,6 +81,17 @@ export default function WalletScreen() {
         {netBalance.toLocaleString(
           'es-CO'
         )}
+      </Text>
+
+      <Text style={styles.subtitle}>
+        Puntos ADSO
+      </Text>
+
+      <Text style={[styles.balance, { color: '#f0a500' }]}>
+        {totalAdsoPoints.toLocaleString('es-CO', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} pts
       </Text>
 
       {/* Filtros */}
@@ -163,6 +182,15 @@ export default function WalletScreen() {
                 'es-CO'
               )}
             </Text>
+
+            {item.adsoPoints > 0 && (
+              <Text style={{ color: '#f0a500', fontWeight: 'bold' }}>
+                +{item.adsoPoints.toLocaleString('es-CO', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} pts ADSO
+              </Text>
+            )}
 
           </View>
 

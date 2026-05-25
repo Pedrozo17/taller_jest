@@ -1,6 +1,7 @@
 import {
   generateTransactionHistory,
   calculateNetBalance,
+  calculateAdsoPoints,
 } from './walletEngine';
 
 describe(
@@ -63,7 +64,7 @@ describe(
       'Debe calcular correctamente el saldo neto',
       () => {
 
-        const mockTransactions = [
+        const mockTransactions = [ //mockTransactions sirve para tener el control total de lo que tu estas probando.
           {
             type: 'Ingreso',
             amount: 100000,
@@ -83,6 +84,70 @@ describe(
 
         expect(result)
           .toBe(70000);
+
+      }
+    );
+
+    test(
+      'Transacciones menores a $50.000 COP deben sumar exactamente 0 puntos ADSO',
+      () => {
+
+        const mockTransactions = [
+          {
+            type: 'Retiro',
+            amount: 49999.99,
+            status: 'Completado',
+          },
+          {
+            type: 'Retiro',
+            amount: 10000,
+            status: 'Completado',
+          },
+          {
+            type: 'Retiro',
+            amount: 50000,
+            status: 'Completado',
+          },
+        ];
+
+        const result =
+          calculateAdsoPoints(
+            mockTransactions
+          );
+
+        expect(result).toBe(0);
+
+      }
+    );
+
+    test(
+      'Transacciones Rechazadas o Pendientes no acumulan puntos ADSO bajo ninguna circunstancia',
+      () => {
+
+        const mockTransactions = [
+          {
+            type: 'Retiro',
+            amount: 200000,
+            status: 'Rechazado',
+          },
+          {
+            type: 'Retiro',
+            amount: 300000,
+            status: 'Pendiente',
+          },
+          {
+            type: 'Ingreso',
+            amount: 500000,
+            status: 'Completado',
+          },
+        ];
+
+        const result =
+          calculateAdsoPoints(
+            mockTransactions
+          );
+
+        expect(result).toBe(0);
 
       }
     );

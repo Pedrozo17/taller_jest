@@ -59,7 +59,29 @@ const generateTransactionHistory = (
 
 };
 
-// Regla de negocio
+//Historial con puntos ADSO
+const generateTransactionHistoryWithPoints = (
+  count = 1
+) => {
+
+  const transactions =
+    generateTransactionHistory(count);
+
+  return transactions.map(
+    transaction => ({
+      ...transaction,
+      adsoPoints:
+        transaction.status === 'Completado' &&
+        transaction.type === 'Retiro' &&
+        transaction.amount > 50.000
+          ? transaction.amount * 0.01
+          : 0,
+    })
+  );
+
+};
+
+
 const calculateNetBalance = (
   transactions
 ) => {
@@ -106,7 +128,48 @@ const calculateNetBalance = (
 
 };
 
-module.exports = {
+//Puntos ADSO 
+const calculateAdsoPoints = (
+  transactions
+) => {
+
+  return transactions.reduce(
+    (totalPoints, transaction) => {
+
+      if (
+        transaction.status !==
+        'Completado'
+      ) {
+        return totalPoints;
+      }
+
+      if (
+        transaction.type !==
+        'Retiro'
+      ) {
+        return totalPoints;
+      }
+
+      if (
+        transaction.amount <= 50.000
+      ) {
+        return totalPoints;
+      }
+
+      return (
+        totalPoints +
+        transaction.amount * 0.01
+      );
+
+    },
+    0
+  );
+
+};
+
+export {
   generateTransactionHistory,
+  generateTransactionHistoryWithPoints,
   calculateNetBalance,
+  calculateAdsoPoints,
 };
