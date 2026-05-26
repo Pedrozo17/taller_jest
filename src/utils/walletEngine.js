@@ -11,7 +11,7 @@ const transactionStatus = [
   'Rechazado',
 ];
 
-// Crear una transacción
+// Crear una transacción base
 const createTransaction = () => {
   return {
     id: faker.string.uuid(),
@@ -29,14 +29,33 @@ const createTransaction = () => {
   };
 };
 
-// --- EXPORTS MODERNOS CON LA PALABRA CLAVE "export" ---
+// --- EXPORTS DE GENERACIÓN DE HISTORIAL ---
 
-// Generar historial
+// Generar historial base
 export const generateTransactionHistory = (count = 1) => {
   return faker.helpers.multiple(createTransaction, { count });
 };
 
-// Regla de negocio
+// Historial con puntos ADSO (Módulo Cashback integrado)
+export const generateTransactionHistoryWithPoints = (count = 1) => {
+  const transactions = generateTransactionHistory(count);
+
+  return transactions.map(
+    transaction => ({
+      ...transaction,
+      adsoPoints:
+        transaction.status === 'Completado' &&
+        transaction.type === 'Retiro' &&
+        transaction.amount > 50000
+          ? transaction.amount * 0.01
+          : 0,
+    })
+  );
+};
+
+// --- REGLAS DE NEGOCIO UNIFICADAS ---
+
+// Calcular saldo neto real
 export const calculateNetBalance = (transactions) => {
   return transactions.reduce((total, transaction) => {
     if (transaction.status !== 'Completado') {
@@ -55,8 +74,27 @@ export const calculateNetBalance = (transactions) => {
   }, 0);
 };
 
+// Calcular acumulación de puntos ADSO (Módulo Cashback)
+export const calculateAdsoPoints = (transactions) => {
+  return transactions.reduce((totalPoints, transaction) => {
+    if (transaction.status !== 'Completado') {
+      return totalPoints;
+    }
+
+    if (transaction.type !== 'Retiro') {
+      return totalPoints;
+    }
+
+    if (transaction.amount <= 50000) {
+      return totalPoints;
+    }
+
+    return totalPoints + (transaction.amount * 0.01);
+  }, 0);
+};
+
 /**
- *
+ * Motor de Moneda Extranjera - Compra de USDT
  * @param {number} currentBalanceCOP 
  * @param {number} amountToBuyUSDT 
  */

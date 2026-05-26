@@ -14,14 +14,13 @@ import {
 } from 'react-native';
 
 import {
-  generateTransactionHistory,
+  generateTransactionHistoryWithPoints,
   calculateNetBalance,
   purchaseUSDT, // <-- Importamos tu nueva lógica del motor lúdico
 } from '../utils/walletEngine';
 
 // Generamos el historial inicial requerido de Faker (mínimo 200)
-const allTransactions =
-  generateTransactionHistory(200);
+const allTransactions = generateTransactionHistoryWithPoints(200);
 
 export default function WalletScreen() {
   const [filter, setFilter] = useState('Todos');
@@ -32,20 +31,15 @@ export default function WalletScreen() {
   const [copDeductions, setCopDeductions] = useState(0); // Control de lo gastado en Crypto
 
   // Filtrado instantáneo (Fase 3.3)
-  const filteredTransactions =
-    useMemo(() => {
-      if (filter === 'Ingreso') {
-        return allTransactions.filter(
-          item => item.type === 'Ingreso'
-        );
-      }
-      if (filter === 'Retiro') {
-        return allTransactions.filter(
-          item => item.type === 'Retiro'
-        );
-      }
-      return allTransactions;
-    }, [filter]);
+  const filteredTransactions = useMemo(() => {
+    if (filter === 'Ingreso') {
+      return allTransactions.filter(item => item.type === 'Ingreso');
+    }
+    if (filter === 'Retiro') {
+      return allTransactions.filter(item => item.type === 'Retiro');
+    }
+    return allTransactions;
+  }, [filter]);
 
   // Saldo neto base calculado del motor (Fase 3.1)
   const baseNetBalance = useMemo(() => {
@@ -84,11 +78,17 @@ export default function WalletScreen() {
     }
   };
 
+  // Puntos ADSO acumulados (Mantenido de Cashback)
+  const totalAdsoPoints = filteredTransactions.reduce(
+    (total, item) => total + item.adsoPoints,
+    0
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>E-Wallet Bunker</Text>
 
-      {/* PANEL DE SALDOS (Fase 3.1 con el módulo de divisas integrado) */}
+      {/* PANEL DE SALDOS (Fase 3.1 unificada con módulo de divisas) */}
       <View style={styles.balanceContainer}>
         <View>
           <Text style={styles.subtitle}>Saldo Neto COP</Text>
@@ -119,6 +119,15 @@ export default function WalletScreen() {
         </View>
       </View>
 
+      {/* PUNTOS ADSO GENERALES (Mantenido de Cashback) */}
+      <Text style={styles.subtitlePoints}>Puntos ADSO Totales</Text>
+      <Text style={[styles.balancePoints, { color: '#f0a500' }]}>
+        {totalAdsoPoints.toLocaleString('es-CO', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} pts
+      </Text>
+
       {/* SECCIÓN HISTORIAL Y FILTROS */}
       <Text style={styles.historyTitle}>Historial de Transacciones</Text>
       
@@ -146,10 +155,10 @@ export default function WalletScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Lista optimizada FlatList (Fase 3.2) */}
+      {/* Lista optimizada FlatList (Fase 3.2 unificada con estilos de fila e indicador de puntos) */}
       <FlatList
         data={filteredTransactions}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardRow}>
@@ -173,6 +182,19 @@ export default function WalletScreen() {
                 {item.type === 'Ingreso' ? '+' : '-'} $ {item.amount.toLocaleString('es-CO')}
               </Text>
             </View>
+
+            {/* INTEGRACIÓN DE INDICA_DOR DE PUNTOS DE CASHBACK EN CADA TARJETA */}
+            {item.adsoPoints > 0 && (
+              <View style={[styles.cardRow, { marginTop: 5 }]}>
+                <Text style={{ color: '#64748b', fontSize: 12 }}>Bono generado:</Text>
+                <Text style={{ color: '#f0a500', fontWeight: 'bold', fontSize: 13 }}>
+                  +{item.adsoPoints.toLocaleString('es-CO', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} pts ADSO
+                </Text>
+              </View>
+            )}
           </View>
         )}
       />
@@ -208,11 +230,23 @@ const styles = StyleSheet.create({
     color: '#93c5fd',
     fontWeight: '600',
   },
+  subtitlePoints: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 5,
+  },
   balance: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     marginTop: 2,
+  },
+  balancePoints: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 2,
+    marginBottom: 15,
   },
   cryptoBadge: {
     backgroundColor: '#1e293b',
@@ -258,6 +292,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#f8fafc',
     fontSize: 16,
+    color: '#000',
   },
   buyButton: {
     backgroundColor: '#10b981',
