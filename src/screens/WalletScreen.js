@@ -14,14 +14,14 @@ import {
 } from 'react-native';
 
 import {
-  generateTransactionHistory,
+  generateTransactionHistoryWithPoints,
   calculateNetBalance,
   purchaseUSDT, // <-- Importamos tu nueva lógica del motor lúdico
 } from '../utils/walletEngine';
 
 // Generamos el historial inicial requerido de Faker (mínimo 200)
 const allTransactions =
-  generateTransactionHistory(200);
+  generateTransactionHistoryWithPoints(200);
 
 export default function WalletScreen() {
   const [filter, setFilter] = useState('Todos');
@@ -84,6 +84,14 @@ export default function WalletScreen() {
     }
   };
 
+  // Puntos ADSO acumulados
+  const totalAdsoPoints =
+    filteredTransactions.reduce(
+      (total, item) =>
+        total + item.adsoPoints,
+      0
+    );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>E-Wallet Bunker</Text>
@@ -119,6 +127,18 @@ export default function WalletScreen() {
         </View>
       </View>
 
+      <Text style={styles.subtitle}>
+        Puntos ADSO
+      </Text>
+
+      <Text style={[styles.balance, { color: '#f0a500' }]}>
+        {totalAdsoPoints.toLocaleString('es-CO', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} pts
+      </Text>
+
+      {/* Filtros */}
       {/* SECCIÓN HISTORIAL Y FILTROS */}
       <Text style={styles.historyTitle}>Historial de Transacciones</Text>
       
