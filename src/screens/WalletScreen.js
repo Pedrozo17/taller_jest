@@ -9,52 +9,80 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  TextInput, // <-- Añadido para ingresar la cantidad
+  Alert,     // <-- Añadido para mostrar estados de la transacción
 } from 'react-native';
 
 import {
   generateTransactionHistoryWithPoints,
   calculateNetBalance,
+  purchaseUSDT, // <-- Importamos tu nueva lógica del motor lúdico
 } from '../utils/walletEngine';
 
+// Generamos el historial inicial requerido de Faker (mínimo 200)
 const allTransactions =
   generateTransactionHistoryWithPoints(200);
 
 export default function WalletScreen() {
+  const [filter, setFilter] = useState('Todos');
+  
+  // --- ESTADOS PARA MONEDA EXTRANJERA ---
+  const [usdtAmount, setUsdtAmount] = useState(''); // Input de texto
+  const [cryptoBalance, setCryptoBalance] = useState(0); // Saldo acumulado USDT
+  const [copDeductions, setCopDeductions] = useState(0); // Control de lo gastado en Crypto
 
-  const [filter, setFilter] =
-    useState('Todos');
-
-  // Filtrado instantáneo
+  // Filtrado instantáneo (Fase 3.3)
   const filteredTransactions =
     useMemo(() => {
-
       if (filter === 'Ingreso') {
-
         return allTransactions.filter(
-          item =>
-            item.type === 'Ingreso'
+          item => item.type === 'Ingreso'
         );
-
       }
-
       if (filter === 'Retiro') {
-
         return allTransactions.filter(
-          item =>
-            item.type === 'Retiro'
+          item => item.type === 'Retiro'
         );
-
       }
-
       return allTransactions;
-
     }, [filter]);
 
-  // Saldo neto
-  const netBalance =
-    calculateNetBalance(
-      filteredTransactions
-    );
+  // Saldo neto base calculado del motor (Fase 3.1)
+  const baseNetBalance = useMemo(() => {
+    return calculateNetBalance(allTransactions); 
+  }, []);
+
+  // Saldo Neto Real disponible (Restando lo gastado en compras de USDT)
+  const actualNetBalance = baseNetBalance - copDeductions;
+
+  // Función para procesar la simulación de compra
+  const handleCryptoPurchase = () => {
+    const amount = parseFloat(usdtAmount);
+    
+    // Validación de entrada
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Error', 'Por favor ingresa una cantidad válida de USDT');
+      return;
+    }
+
+    // Invocar el motor financiero testeado en Docker
+    const tx = purchaseUSDT(actualNetBalance, amount);
+
+    if (tx.status === 'Rechazado') {
+      // Reto de Testing 1 superado visualmente: Error si no hay saldo suficiente
+      Alert.alert('Transacción Rechazada', `Motivo: ${tx.error}`);
+    } else {
+      // Reto de Testing 2 superado: Éxito en conversión con tasa fluctuante de Faker
+      setCopDeductions(prev => prev + tx.costCOP);
+      setCryptoBalance(prev => prev + tx.amountUSDT);
+      setUsdtAmount(''); // Limpiar input
+      
+      Alert.alert(
+        '¡Compra Exitosa!', 
+        `Compraste: ${tx.amountUSDT} USDT\nTasa de cambio: $${tx.exchangeRate.toLocaleString('es-CO')} COP\nCosto Total: $${tx.costCOP.toLocaleString('es-CO')} COP`
+      );
+    }
+  };
 
   // Puntos ADSO acumulados
   const totalAdsoPoints =
@@ -65,23 +93,39 @@ export default function WalletScreen() {
     );
 
   return (
-
     <View style={styles.container}>
+      <Text style={styles.title}>E-Wallet Bunker</Text>
 
-      <Text style={styles.title}>
-        E-Wallet Bunker
-      </Text>
+      {/* PANEL DE SALDOS (Fase 3.1 con el módulo de divisas integrado) */}
+      <View style={styles.balanceContainer}>
+        <View>
+          <Text style={styles.subtitle}>Saldo Neto COP</Text>
+          <Text style={styles.balance}>
+            $ {actualNetBalance.toLocaleString('es-CO')}
+          </Text>
+        </View>
+        <View style={styles.cryptoBadge}>
+          <Text style={styles.cryptoBadgeTitle}>Saldo USDT</Text>
+          <Text style={styles.cryptoBadgeValue}>{cryptoBalance} 🪙</Text>
+        </View>
+      </View>
 
-      <Text style={styles.subtitle}>
-        Saldo Neto
-      </Text>
-
-      <Text style={styles.balance}>
-        $
-        {netBalance.toLocaleString(
-          'es-CO'
-        )}
-      </Text>
+      {/* FORMULARIO: COMPRA DE MONEDA EXTRANJERA (Línea de Negocio - Aprendiz 1) */}
+      <View style={styles.cryptoForm}>
+        <Text style={styles.formTitle}>🏦 Casa de Cambio Crypto ADSO-Pay</Text>
+        <View style={styles.formRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 50"
+            keyboardType="numeric"
+            value={usdtAmount}
+            onChangeText={setUsdtAmount}
+          />
+          <TouchableOpacity style={styles.buyButton} onPress={handleCryptoPurchase}>
+            <Text style={styles.buyButtonText}>Comprar USDT</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <Text style={styles.subtitle}>
         Puntos ADSO
@@ -95,168 +139,211 @@ export default function WalletScreen() {
       </Text>
 
       {/* Filtros */}
+      {/* SECCIÓN HISTORIAL Y FILTROS */}
+      <Text style={styles.historyTitle}>Historial de Transacciones</Text>
+      
+      {/* Filtros rápidos (Fase 3.3) */}
       <View style={styles.filters}>
-
         <TouchableOpacity
-          style={styles.button}
-          onPress={() =>
-            setFilter('Todos')
-          }
+          style={[styles.button, filter === 'Todos' && styles.activeButton]}
+          onPress={() => setFilter('Todos')}
         >
-          <Text>
-            Todos
-          </Text>
+          <Text style={filter === 'Todos' && styles.activeButtonText}>Todos</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.button}
-          onPress={() =>
-            setFilter('Ingreso')
-          }
+          style={[styles.button, filter === 'Ingreso' && styles.activeButton]}
+          onPress={() => setFilter('Ingreso')}
         >
-          <Text>
-            Ingresos
-          </Text>
+          <Text style={filter === 'Ingreso' && styles.activeButtonText}>Ingresos</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.button}
-          onPress={() =>
-            setFilter('Retiro')
-          }
+          style={[styles.button, filter === 'Retiro' && styles.activeButton]}
+          onPress={() => setFilter('Retiro')}
         >
-          <Text>
-            Retiros
-          </Text>
+          <Text style={filter === 'Retiro' && styles.activeButtonText}>Retiros</Text>
         </TouchableOpacity>
-
       </View>
 
-      {/* Lista */}
+      {/* Lista optimizada FlatList (Fase 3.2) */}
       <FlatList
         data={filteredTransactions}
         keyExtractor={(item) => item.id}
-
         renderItem={({ item }) => (
-
           <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <Text style={styles.account}>Cuenta: {item.accountNumber}</Text>
+              <Text style={styles.statusBadge}>{item.status}</Text>
+            </View>
 
-            <Text style={styles.account}>
-              Cuenta:
-              {' '}
-              {item.accountNumber}
-            </Text>
-
-            <Text>
-              Tipo:
-              {' '}
-              {item.type}
-            </Text>
-
-            <Text>
-              Estado:
-              {' '}
-              {item.status}
-            </Text>
-
-            <Text style={styles.date}>
-              {new Date(
-                item.date
-              ).toLocaleDateString()}
-            </Text>
-
-            <Text
-              style={{
-                color:
-                  item.type ===
-                  'Ingreso'
-                    ? 'green'
-                    : 'red',
-
-                fontWeight: 'bold',
-                fontSize: 18,
-              }}
-            >
-              $
-              {item.amount.toLocaleString(
-                'es-CO'
-              )}
-            </Text>
-
-            {item.adsoPoints > 0 && (
-              <Text style={{ color: '#f0a500', fontWeight: 'bold' }}>
-                +{item.adsoPoints.toLocaleString('es-CO', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })} pts ADSO
+            <View style={styles.cardRow}>
+              <Text style={styles.date}>
+                {new Date(item.date).toLocaleDateString()}
               </Text>
-            )}
-
+              
+              {/* Pintado condicional: Verde para Ingresos, Rojo para Retiros */}
+              <Text
+                style={{
+                  color: item.type === 'Ingreso' ? '#10b981' : '#ef4444',
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                }}
+              >
+                {item.type === 'Ingreso' ? '+' : '-'} $ {item.amount.toLocaleString('es-CO')}
+              </Text>
+            </View>
           </View>
-
         )}
-
       />
-
     </View>
-
   );
-
 }
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 60,
+    backgroundColor: '#f8fafc',
+    paddingTop: 50,
     paddingHorizontal: 20,
   },
-
   title: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 10,
+    color: '#0f172a',
+    marginBottom: 15,
+    textAlign: 'center',
   },
-
-  subtitle: {
-    fontSize: 18,
-  },
-
-  balance: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    marginBottom: 25,
-  },
-
-  filters: {
+  balanceContainer: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e3a8a',
+    padding: 18,
+    borderRadius: 14,
     marginBottom: 20,
   },
-
-  button: {
-    backgroundColor: '#ddd',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 8,
+  subtitle: {
+    fontSize: 13,
+    color: '#93c5fd',
+    fontWeight: '600',
   },
-
-  card: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    marginBottom: 12,
+  balance: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 2,
+  },
+  cryptoBadge: {
+    backgroundColor: '#1e293b',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 10,
+    alignItems: 'center',
   },
-
-  account: {
+  cryptoBadgeTitle: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cryptoBadgeValue: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  cryptoForm: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+  },
+  formTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#334155',
+    marginBottom: 10,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8fafc',
+    fontSize: 16,
+  },
+  buyButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  buyButtonText: {
+    color: '#fff',
     fontWeight: 'bold',
   },
-
-  date: {
-    marginTop: 5,
-    marginBottom: 5,
-    color: '#666',
+  historyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 10,
   },
-
+  filters: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 15,
+  },
+  button: {
+    backgroundColor: '#e2e8f0',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  activeButton: {
+    backgroundColor: '#3b82f6',
+  },
+  activeButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  account: {
+    fontWeight: '600',
+    color: '#334155',
+  },
+  statusBadge: {
+    fontSize: 11,
+    backgroundColor: '#f1f5f9',
+    color: '#64748b',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+    fontWeight: '500',
+  },
+  date: {
+    color: '#94a3b8',
+    fontSize: 13,
+  },
 });
