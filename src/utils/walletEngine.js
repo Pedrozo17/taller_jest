@@ -22,6 +22,7 @@ const createTransaction = () => {
       max: 500000,
       fractionDigits: 2,
     }),
+    date: faker.date.recent({ days: 30 }),
     date: faker.date.recent({
       days: 30,
     }),
@@ -32,6 +33,12 @@ const createTransaction = () => {
 // --- EXPORTS MODERNOS CON LA PALABRA CLAVE "export" ---
 
 // Generar historial
+const generateTransactionHistory = (count = 1) => {
+  return faker.helpers.multiple(createTransaction, { count });
+};
+
+// Regla de negocio
+const calculateNetBalance = (transactions) => {
 export const generateTransactionHistory = (count = 1) => {
   return faker.helpers.multiple(createTransaction, { count });
 };
@@ -103,6 +110,15 @@ export const calculateNetBalance = (transactions) => {
     if (transaction.status !== 'Completado') {
       return total;
     }
+    if (transaction.type === 'Ingreso') {
+      return total + transaction.amount;
+    }
+    if (transaction.type === 'Retiro') {
+      return total - transaction.amount;
+    }
+    return total;
+  }, 0);
+};
 
     if (transaction.type === 'Ingreso') {
       return total + transaction.amount;
@@ -149,16 +165,24 @@ const calculateAdsoPoints = (
         transaction.amount * 0.01
       );
 
-    },
-    0
-  );
+// NUEVO: Módulo de Moneda Extranjera (compra de USDT)
+const comprarUSDT = (saldoCOP, montoCOP) => {
+  const tasaCambio = faker.number.float({ min: 3900, max: 4300, fractionDigits: 2 });
 
+  if (montoCOP > saldoCOP) {
+    return { estado: 'Rechazado', mensaje: 'Saldo insuficiente' };
+  }
+
+  const usdt = montoCOP / tasaCambio;
+  return { estado: 'Completado', usdt, tasaCambio };
 };
 
 export {
   generateTransactionHistory,
   generateTransactionHistoryWithPoints,
   calculateNetBalance,
+  comprarUSDT, // <-- se añade aquí sin tocar lo anterior
+};
   calculateAdsoPoints,
 };
 /**
